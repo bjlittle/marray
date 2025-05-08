@@ -67,6 +67,13 @@ def masked_namespace(xp):
 
         __array_priority__ = 1  # make reflected operators work with NumPy
 
+        # hack
+        def __array_function__(self, func, types, args, kwargs):
+            mod = self.__array_namespace__()
+            print(func.__name__)
+            afunc = getattr(mod, func.__name__)
+            return afunc(*args, **kwargs)
+
         @property
         def data(self):
             return self._data
@@ -263,7 +270,10 @@ def masked_namespace(xp):
                 if mask is None else mask)
         mask = xp.asarray(mask, dtype=xp.bool, device=device, copy=copy)
 
-        return MArray(data, mask=mask)
+        result = MArray(data, mask=mask)
+
+
+        return result
     mod.asarray = asarray
 
     creation_functions = ['arange', 'empty', 'eye', 'from_dlpack',
@@ -555,7 +565,9 @@ def masked_namespace(xp):
                             'any': False}
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            data[x.mask] = replacements[name]
+            # hack
+            # data[x.mask] = replacements[name]
+            data = data.at[x.mask].set(replacements[name])
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
             mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
@@ -677,6 +689,26 @@ def masked_namespace(xp):
                 mod_attr.__name__ = xp_attr.__name__
             except (AttributeError, TypeError):
                 pass
+
+    # filthy hack (tm)
+    # hack = ["sum", "prod"]
+    # for name in hack:
+    #     def fun(self, *args, name=name, **kwargs):
+    #         mfunc = getattr(mod, name)
+    #         return mfunc(self, *args, **kwargs)
+    #     setattr(MArray, name, fun)
+
+    original_class = mod.asarray(1).data.__class__
+    desired_names = [
+        func for func in dir(original_class)
+        if callable(getattr(original_class, func)) and not func.startswith("_")
+    ]
+    for name in desired_names:
+        if hasattr(mod, name):
+            def fun(self, *args, name=name, **kwargs):
+                mod_func = getattr(mod, name)
+                return mod_func(self, *args, **kwargs)
+            setattr(MArray, name, fun)
 
     return mod
 

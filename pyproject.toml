@@ -86,6 +86,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tool.pixi.dependencies]
 python = ">=3.10.16,<3.14"
+notebook = ">=7.4.2,<8"
 
 [tool.pixi.pypi-dependencies]
 marray = { path = ".", editable = true }
@@ -203,3 +204,8 @@ ci-py310 = { features = ["py310", "tests", "xp-tests"] }
 ci-py313 = { features = ["py313", "tests", "xp-tests"] }
 ci-upstream-dev = { features = ["test-upstream-dev"] }
 pypi-test-extra = ["test"]
+
+[tool.pixi.target.linux-64.dependencies]
+jax = ">=0.5.2,<0.6"
+matplotlib = ">=3.10.1,<4"
+xarray = ">=2025.4.0,<2026"
